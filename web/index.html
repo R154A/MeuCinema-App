@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meu Cinema</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="#/"><span class="logo-dot">🎬</span><span>Meu<b>Cinema</b></span></a>
+  <div class="search">
+    <svg viewBox="0 0 24 24" class="s-ico"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" placeholder="Busque um filme, série ou ator…" autocomplete="off">
+    <div id="drop" class="drop hidden"></div>
+  </div>
+  <nav>
+    <a href="#/" data-nav="home">Início</a>
+    <a href="#/assistidos" data-nav="assistidos">Assistidos <span id="c-w" class="pill"></span></a>
+    <a href="#/quero" data-nav="quero">Quero assistir <span id="c-l" class="pill"></span></a>
+    <a href="#/listas" data-nav="listas">Listas</a>
+    <a href="#/perfil" data-nav="perfil" class="navicon" id="nav-avatar" title="Meu perfil" aria-label="Meu perfil"><span class="av">😎</span></a>
+    <a href="#/ajustes" data-nav="ajustes" class="navicon" title="Ajustes" aria-label="Ajustes"><svg viewBox="0 0 24 24" class="gear"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
+  </nav>
+</header>
+<main id="view"></main>
+<div id="toast" class="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
