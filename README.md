@@ -1,7 +1,5 @@
 # 🎬 Meu Cinema
 
-Seu Letterboxd + JustWatch pessoal para Windows: busque filmes e séries, marque o que já assistiu, monte listas, veja onde assistir, elenco, notas e estatísticas. Os dados ficam só no seu computador. Usa a API gratuita do [TMDB](https://www.themoviedb.org/).
-
 ## ⬇️ Passo 1 — Baixar e instalar
 
 1. 👉 **[Clique aqui para abrir a última versão (Releases)](https://github.com/R154A/MeuCinema-App/releases/latest)**
