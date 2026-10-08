@@ -1,0 +1,42 @@
+MEU CINEMA - seu Letterboxd + JustWatch pessoal
+================================================
+
+GERAR O EXECUTAVEL (Windows)
+1. Instale o Python 3.10+ em python.org (marque "Add Python to PATH").
+2. De dois cliques em  build_exe.bat
+3. Seu programa fica em  dist\MeuCinema.exe  (pode copiar para onde quiser).
+
+TESTAR SEM GERAR O .EXE
+   pip install pywebview
+   python app.py            -> abre a janela do app
+   python app.py --browser  -> abre no navegador
+
+SEUS DADOS
+Ficam em  %APPDATA%\MeuCinema  (biblioteca.json e config.json).
+Use Ajustes > Exportar backup de vez em quando.
+
+CHAVE DO TMDB
+Cada pessoa usa a sua propria chave gratuita do TMDB.
+Veja o passo a passo no README.md e cole a chave em Ajustes.
+
+NOVIDADES DA VERSAO 2
+- Inicio: todos os filmes e series, ordenados por Relevancia, Em alta, A-Z ou Mais bem avaliados, com filtro de genero e epoca.
+- Series: mesma ficha dos filmes (elenco, temporadas, onde assistir, nota, resenha).
+- Tags personalizadas em cada titulo (filtre em Assistidos / Quero assistir).
+- Listas: crie as suas e acompanhe listas publicas do TMDB colando o link.
+- Perfil: foto, nome, idade, horas assistidas, 4 favoritos, meta anual, graficos e conquistas.
+- Seus dados antigos (versao 1) sao convertidos automaticamente.
+
+ATUALIZAR: substitua TODOS os arquivos (app.py, server.py, storage.py, tmdb.py e a pasta web) e gere o .exe de novo.
+
+==================== INSTALADOR (MeuCinemaSetup.exe) ====================
+Para gerar um instalador moderno e limpo:
+1. Instale o Python 3.12 (python.org, marque "Add Python to PATH").
+2. De dois cliques em  criar_instalador.bat
+   (ele instala o que falta, inclusive o Inno Setup, e monta tudo sozinho)
+3. No fim aparece o arquivo  MeuCinemaSetup.exe  nesta pasta.
+
+Quem instalar so precisa desse arquivo: o assistente instala o app, cria o atalho
+"Meu Cinema" (menu Iniciar e Area de Trabalho) e instala o componente WebView2 da
+Microsoft se o computador nao tiver. Nao pede senha de administrador.
+Para desinstalar: Configuracoes do Windows > Aplicativos > Meu Cinema.
