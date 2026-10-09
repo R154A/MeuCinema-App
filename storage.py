@@ -80,7 +80,7 @@ class Store:
     def set_profile(self, patch):
         with self.lock:
             p = self.config.setdefault("profile", {})
-            for k in ("name", "birthdate", "bio", "photo", "goal", "favorites"):
+            for k in ("name", "birthdate", "bio", "photo", "goal", "favorites", "cosmetics"):
                 if k in patch:
                     p[k] = patch[k]
             self._write(self.cfg_file, self.config)
@@ -176,8 +176,13 @@ class Store:
 
     # ---- backup ----
     def export(self):
-        return {"app": "MeuCinema", "version": 2, "library": self.library, "lists": self.lists,
-                "profile": self.get_profile()}
+        return {"app": "MeuCinema", "version": 2, "exported_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "library": self.library, "lists": self.lists, "profile": self.get_profile()}
+
+    def record_backup(self, path, kind):
+        """Lembra a pasta usada (os diálogos voltam a abrir nela) e o último backup feito."""
+        self.set_config(backup_dir=str(Path(path).parent),
+                        **({"last_backup": {"path": str(path), "at": time.strftime("%d/%m/%Y %H:%M")}} if kind == "export" else {}))
 
     def import_(self, data, merge=True):
         lib = data.get("library") if isinstance(data, dict) else None

@@ -1,8 +1,10 @@
 """Servidor HTTP local (só 127.0.0.1) que liga a interface ao TMDB e ao armazenamento."""
 import json
 import mimetypes
+import os
 import re
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -10,7 +12,9 @@ from urllib.parse import parse_qs, urlparse
 from tmdb import TMDB, TMDBError
 
 
-def make_server(web_dir, store, default_token="", default_key="", tmdb_factory=None, port=0):
+def make_server(web_dir, store, default_token="", default_key="", tmdb_factory=None, port=0,
+                dialogs=None, app_dir=""):
+    """dialogs: objeto com save(nome) e open() que abrem o Explorador do Windows (None = modo navegador)."""
     web_dir = Path(web_dir)
 
     def build_tmdb():
@@ -93,7 +97,12 @@ def make_server(web_dir, store, default_token="", default_key="", tmdb_factory=N
                     if p == "/api/settings":
                         c = store.config
                         has = bool(c.get("token") or c.get("api_key") or t.token or t.api_key)
+                        bdir = c.get("backup_dir") or ""
                         return self._send(200, {"configured": has, "folder": str(store.dir),
+                                                "app_folder": str(app_dir),
+                                                "backup_dir": bdir if bdir and os.path.isdir(bdir) else str(app_dir),
+                                                "native_dialogs": dialogs is not None,
+                                                "last_backup": c.get("last_backup"),
                                                 "transparency": c.get("transparency", True),
                                                 "theme": c.get("theme", "dark")})
                 else:
@@ -103,6 +112,35 @@ def make_server(web_dir, store, default_token="", default_key="", tmdb_factory=N
                         return self._send(200, {"entry": store.update(f"{m.group(1)}:{m.group(2)}", body)})
                     if p == "/api/import":
                         return self._send(200, {"imported": store.import_(body, merge=True)})
+                    if p == "/api/backup/export":
+                        if dialogs is None:
+                            return self._send(501, {"error": "Diálogo de arquivos indisponível neste modo."})
+                        path = dialogs.save("MeuCinema-backup-" + time.strftime("%Y-%m-%d") + ".json")
+                        if not path:
+                            return self._send(200, {"cancelled": True})
+                        if not path.lower().endswith(".json"):
+                            path += ".json"
+                        try:
+                            with open(path, "w", encoding="utf-8") as f:
+                                json.dump(store.export(), f, ensure_ascii=False, indent=2)
+                        except OSError:
+                            return self._send(400, {"error": "Não consegui salvar nesse local. Escolha outra pasta."})
+                        store.record_backup(path, "export")
+                        return self._send(200, {"ok": True, "path": path, "titles": len(store.library)})
+                    if p == "/api/backup/import":
+                        if dialogs is None:
+                            return self._send(501, {"error": "Diálogo de arquivos indisponível neste modo."})
+                        path = dialogs.open()
+                        if not path:
+                            return self._send(200, {"cancelled": True})
+                        try:
+                            with open(path, "r", encoding="utf-8-sig") as f:
+                                data = json.load(f)
+                            n = store.import_(data, merge=True)
+                        except (OSError, ValueError, AttributeError, TypeError):
+                            return self._send(400, {"error": "Esse arquivo não parece ser um backup do Meu Cinema."})
+                        store.record_backup(path, "import")
+                        return self._send(200, {"imported": n, "path": path})
                     if p == "/api/profile":
                         return self._send(200, store.set_profile(body))
                     if p == "/api/lists":
