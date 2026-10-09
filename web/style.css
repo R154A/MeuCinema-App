@@ -360,3 +360,81 @@ body:not(.solid) .mbox{background:color-mix(in srgb,var(--bg) 88%,#fff)}
   .filters{width:100%;border-radius:26px}.filters select{min-width:calc(50% - 8px)}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* ==========================================================
+   v2.3: conquistas por categoria, níveis e recompensas cosméticas
+   ========================================================== */
+/* nível e título no cartão do perfil */
+.ptitle{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 6px}
+.ptitle b{font-size:15px}
+.ptitle small{color:var(--muted);font-weight:700}
+.lvlchip{padding:3px 12px;border-radius:999px;background:var(--accent);color:#fff;font-weight:800;font-size:13px;box-shadow:0 4px 12px rgba(242,36,91,.4)}
+.progress.thin{height:8px;margin:0 0 10px}
+
+/* abas de categoria */
+#achtabs{display:flex;justify-content:center;flex-wrap:wrap;width:fit-content;max-width:100%;margin:0 auto 18px}
+.seg button small{opacity:.7;margin-left:4px;font-weight:700}
+
+/* medalhas por nível: bronze, prata, ouro, diamante */
+.bdg:not(.got){filter:none;opacity:.8}
+.bdg:not(.got)>span{filter:grayscale(1);opacity:.55}
+.bdg .mini{width:78%;height:6px;border-radius:999px;background:var(--fill-2);margin-top:8px;overflow:hidden}
+.bdg .mini i{display:block;height:100%;border-radius:999px;background:var(--muted)}
+.bdg .pg{margin-top:2px;font-weight:700}
+.tierchip{font-style:normal;font-size:11px;font-weight:800;margin-top:6px;padding:2px 10px;border-radius:999px;background:var(--fill-2)}
+.bdg.got[data-tier="bronze"]{border-color:#CD7F32;background:rgba(205,127,50,.13)}
+.bdg.got[data-tier="bronze"] .tierchip{background:rgba(205,127,50,.3);color:#E9A867}
+.bdg.got[data-tier="prata"]{border-color:#C3CAD6;background:rgba(195,202,214,.13)}
+.bdg.got[data-tier="prata"] .tierchip{background:rgba(195,202,214,.28)}
+.bdg.got[data-tier="ouro"]{border-color:#FFD24A;background:rgba(255,210,74,.13);box-shadow:0 0 20px rgba(255,210,74,.22)}
+.bdg.got[data-tier="ouro"] .tierchip{background:rgba(255,210,74,.3);color:#FFD24A}
+.bdg.got[data-tier="diamante"]{border-color:#7DF9FF;background:rgba(125,249,255,.12);box-shadow:0 0 26px rgba(125,249,255,.3);animation:shine 3.5s ease-in-out infinite}
+.bdg.got[data-tier="diamante"] .tierchip{background:rgba(125,249,255,.28);color:#7DF9FF}
+body.light .bdg.got[data-tier="ouro"] .tierchip{color:#8a6500}
+body.light .bdg.got[data-tier="bronze"] .tierchip{color:#8a4d12}
+body.light .bdg.got[data-tier="diamante"] .tierchip{color:#007c8a}
+@keyframes shine{0%,100%{box-shadow:0 0 14px rgba(125,249,255,.2)}50%{box-shadow:0 0 30px rgba(125,249,255,.5)}}
+
+/* recompensas (cosméticos) */
+.rgroup h4{margin:16px 0 10px;text-align:center;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.ritems{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+.ritem{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-width:120px;padding:14px 12px;border-radius:var(--r-sm);background:var(--fill);border:2px solid var(--line);text-align:center;transition:.2s}
+.ritem:hover:not(.locked){transform:translateY(-3px);border-color:var(--accent)}
+.ritem.on{border-color:var(--accent);background:var(--accent-soft)}
+.ritem.locked{opacity:.45;cursor:not-allowed}
+.ritem b{font-size:14px}
+.ritem small{color:var(--muted);font-weight:700;font-size:12px}
+.ritem.on small{color:var(--accent-text)}
+.tdemo{font-weight:800;font-size:14px}
+
+/* molduras do avatar (perfil e menu) */
+.avatar{--fw:4px}
+nav a.navicon .av{--fw:2px}
+.fdemo{display:block;width:42px;height:42px;border-radius:50%;background:var(--fill-2);--fw:3px;box-shadow:0 0 0 var(--fw) var(--accent)}
+:is(body[data-frame="silver"] .avatar,body[data-frame="silver"] nav a.navicon .av,.fdemo[data-style="silver"]){border-color:#D5D9E2;box-shadow:0 0 0 var(--fw) #D5D9E2,0 0 calc(var(--fw)*4) rgba(213,217,226,.5)}
+:is(body[data-frame="gold"] .avatar,body[data-frame="gold"] nav a.navicon .av,.fdemo[data-style="gold"]){border-color:#FFD24A;box-shadow:0 0 0 var(--fw) #FFD24A,0 0 calc(var(--fw)*5) rgba(255,190,40,.65)}
+:is(body[data-frame="ruby"] .avatar,body[data-frame="ruby"] nav a.navicon .av,.fdemo[data-style="ruby"]){border-color:#FF2D55;animation:ruby 2.4s ease-in-out infinite}
+:is(body[data-frame="rainbow"] .avatar,body[data-frame="rainbow"] nav a.navicon .av,.fdemo[data-style="rainbow"]){animation:rainbow 6s linear infinite}
+@keyframes ruby{0%,100%{box-shadow:0 0 0 var(--fw) #FF2D55,0 0 calc(var(--fw)*3) rgba(255,45,85,.45)}50%{box-shadow:0 0 0 var(--fw) #FF5C7C,0 0 calc(var(--fw)*7) rgba(255,45,85,.9)}}
+@keyframes rainbow{
+  0%,100%{box-shadow:0 0 0 var(--fw) #FF3D81,0 0 calc(var(--fw)*5) rgba(255,61,129,.7)}
+  17%{box-shadow:0 0 0 var(--fw) #FF9F1C,0 0 calc(var(--fw)*5) rgba(255,159,28,.7)}
+  33%{box-shadow:0 0 0 var(--fw) #FFE14D,0 0 calc(var(--fw)*5) rgba(255,225,77,.7)}
+  50%{box-shadow:0 0 0 var(--fw) #2EE6A8,0 0 calc(var(--fw)*5) rgba(46,230,168,.7)}
+  67%{box-shadow:0 0 0 var(--fw) #4DA3FF,0 0 calc(var(--fw)*5) rgba(77,163,255,.7)}
+  83%{box-shadow:0 0 0 var(--fw) #B26BFF,0 0 calc(var(--fw)*5) rgba(178,107,255,.7)}}
+
+/* estilos das tags (em todo o app) */
+:is(body[data-tags="silver"] .tag-chip,.tag-chip[data-style="silver"]){background:linear-gradient(135deg,#EEF0F5,#A9B0BD);color:#23242A;border-color:rgba(255,255,255,.7)}
+:is(body[data-tags="gold"] .tag-chip,.tag-chip[data-style="gold"]){background:linear-gradient(135deg,#FFE680,#E8A300);color:#3A2500;border-color:#FFF3B0;box-shadow:0 0 14px rgba(255,200,60,.45);text-shadow:0 1px 0 rgba(255,255,255,.35)}
+:is(body[data-tags="neon"] .tag-chip,.tag-chip[data-style="neon"]){background:transparent;color:#5EF2FF;border-color:#5EF2FF;box-shadow:0 0 10px rgba(94,242,255,.65),inset 0 0 8px rgba(94,242,255,.3);text-shadow:0 0 6px rgba(94,242,255,.8)}
+body.light:is([data-tags="neon"] .tag-chip,.tag-chip[data-style="neon"]),body.light[data-tags="neon"] .tag-chip,body.light .tag-chip[data-style="neon"]{color:#007C8A;border-color:#00A6B8;text-shadow:none;box-shadow:0 0 8px rgba(0,166,184,.4)}
+:is(body[data-tags="holo"] .tag-chip,.tag-chip[data-style="holo"]){background:linear-gradient(120deg,#FF7AA8,#FFD36B,#7DFFB4,#6BC8FF,#C58BFF,#FF7AA8);background-size:300% 100%;animation:holo 5s linear infinite;color:#1B1B20;border-color:rgba(255,255,255,.65)}
+@keyframes holo{to{background-position:300% 0}}
+:is(body[data-tags]:not([data-tags="default"]) .tag-chip,.tag-chip[data-style]:not([data-style="default"])) small{color:inherit;opacity:.65}
+:is(body[data-tags]:not([data-tags="default"]) .tag-chip,.tag-chip[data-style]:not([data-style="default"])) button{background:rgba(0,0,0,.22);color:inherit}
+
+/* caminhos no Backup */
+.paths{margin-top:14px;display:grid;gap:8px;text-align:left}
+.paths small{display:block;color:var(--muted);font-size:12px;font-weight:700;margin-bottom:2px}
+.paths code{display:block;padding:8px 12px;border-radius:12px;background:var(--fill);font-size:12.5px;word-break:break-all;user-select:text;font-family:Consolas,"Cascadia Mono",monospace}

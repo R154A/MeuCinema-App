@@ -10,7 +10,7 @@ async function api(path, body) {
   let r;
   try { r = await fetch(path, opt); } catch { throw new Error("O app local não respondeu."); }
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || "Erro inesperado");
+  if (!r.ok) { const e = new Error(j.error || "Erro inesperado"); e.status = r.status; throw e; }
   return j;
 }
 function toast(msg, err) {
@@ -41,6 +41,9 @@ async function refreshProfile() {
     if (P.photo) { av.style.backgroundImage = `url('${P.photo}')`; av.textContent = ""; }
     else { av.style.backgroundImage = ""; av.textContent = (P.name || "").trim() ? P.name.trim()[0].toUpperCase() : "😎"; }
     $("#nav-avatar").title = P.name ? "Perfil de " + P.name : "Meu perfil";
+    const c = P.cosmetics || {};
+    document.body.dataset.frame = c.frame || "default"; // moldura do avatar (CSS reage a esses atributos)
+    document.body.dataset.tags = c.tags || "default";   // estilo das tags
   } catch { /* sem perfil ainda */ }
 }
 async function save(type, id, patch) {
@@ -401,37 +404,141 @@ async function pageTmdbList(id) {
 }
 
 /* ---------- PERFIL ---------- */
-const BADGES = [
-  ["🎬", "Primeiro take", "Assistiu seu 1º título", (s) => s.total >= 1],
-  ["🍿", "Pipoca em dia", "10 títulos vistos", (s) => s.total >= 10],
-  ["🎞️", "Cinéfilo", "50 títulos vistos", (s) => s.total >= 50],
-  ["🏆", "Centenário", "100 títulos vistos", (s) => s.total >= 100],
-  ["🌟", "Lenda das telas", "250 títulos vistos", (s) => s.total >= 250],
-  ["⏱️", "100 horas", "100 horas assistidas", (s) => s.min >= 6000],
-  ["🛋️", "Maratonista", "500 horas assistidas", (s) => s.min >= 30000],
-  ["📺", "Seriemaníaco", "10 séries vistas", (s) => s.shows >= 10],
-  ["✍️", "Crítico", "10 resenhas escritas", (s) => s.reviews >= 10],
-  ["🎭", "Eclético", "8 gêneros diferentes", (s) => s.genres.length >= 8],
-  ["⏳", "Viajante do tempo", "Filmes de 5 décadas", (s) => s.decades.length >= 5],
-  ["💖", "Coração mole", "10 títulos curtidos", (s) => s.liked >= 10],
-  ["🏷️", "Organizado", "Usa 5 tags diferentes", (s) => s.tagCount >= 5],
+/* ---------- CONQUISTAS, NÍVEIS E RECOMPENSAS ---------- */
+const TIERS = { bronze: { pts: 10, label: "Bronze" }, prata: { pts: 25, label: "Prata" }, ouro: { pts: 50, label: "Ouro" }, diamante: { pts: 100, label: "Diamante" } };
+const CATS = [
+  { id: "maratona", ico: "🎬", name: "Maratona" }, { id: "tempo", ico: "⏱️", name: "Tempo" }, { id: "series", ico: "📺", name: "Séries" },
+  { id: "critica", ico: "✍️", name: "Crítica" }, { id: "explora", ico: "🧭", name: "Exploração" }, { id: "paixao", ico: "💖", name: "Paixão" },
+  { id: "const", ico: "🔥", name: "Constância" }, { id: "org", ico: "🗂️", name: "Organização" },
 ];
-function computeStats() {
+// [categoria, ícone, nome, descrição, medalha, valor (chave de stats.v), meta]
+const ACH = [
+  ["maratona", "🎬", "Primeiro take", "Assistir 1 título", "bronze", "total", 1],
+  ["maratona", "🍿", "Pipoca em dia", "10 títulos vistos", "bronze", "total", 10],
+  ["maratona", "🎟️", "Sessão em cartaz", "25 títulos vistos", "prata", "total", 25],
+  ["maratona", "🎞️", "Cinéfilo", "50 títulos vistos", "prata", "total", 50],
+  ["maratona", "🏆", "Centenário", "100 títulos vistos", "ouro", "total", 100],
+  ["maratona", "🌟", "Lenda das telas", "250 títulos vistos", "ouro", "total", 250],
+  ["maratona", "📚", "Enciclopédia viva", "500 títulos vistos", "diamante", "total", 500],
+  ["maratona", "👑", "Mil e uma noites", "1000 títulos vistos", "diamante", "total", 1000],
+  ["tempo", "⏳", "Aquecendo", "10 horas assistidas", "bronze", "hours", 10],
+  ["tempo", "🕐", "Meio dia de cinema", "50 horas assistidas", "prata", "hours", 50],
+  ["tempo", "⏱️", "100 horas", "100 horas assistidas", "prata", "hours", 100],
+  ["tempo", "🛋️", "Maratonista", "250 horas assistidas", "ouro", "hours", 250],
+  ["tempo", "🌙", "Coruja do sofá", "500 horas assistidas", "ouro", "hours", 500],
+  ["tempo", "♾️", "Sem sair de casa", "1000 horas assistidas", "diamante", "hours", 1000],
+  ["series", "📺", "Primeiro episódio", "1 série vista", "bronze", "shows", 1],
+  ["series", "🍩", "Maratona de séries", "5 séries vistas", "prata", "shows", 5],
+  ["series", "🛰️", "Seriemaníaco", "10 séries vistas", "prata", "shows", 10],
+  ["series", "📡", "Viciado em séries", "25 séries vistas", "ouro", "shows", 25],
+  ["series", "🏰", "Rei do streaming", "50 séries vistas", "diamante", "shows", 50],
+  ["critica", "✍️", "Primeira opinião", "1 resenha escrita", "bronze", "reviews", 1],
+  ["critica", "📝", "Crítico", "10 resenhas escritas", "prata", "reviews", 10],
+  ["critica", "🖋️", "Colunista", "25 resenhas escritas", "ouro", "reviews", 25],
+  ["critica", "📰", "Crítico de Cannes", "50 resenhas escritas", "diamante", "reviews", 50],
+  ["critica", "⭐", "Dando nota", "Avaliar 25 títulos", "prata", "rated", 25],
+  ["critica", "🌠", "Cinco estrelas", "Dar 10 notas máximas (5★)", "prata", "five", 10],
+  ["critica", "⚖️", "Juiz exigente", "Avaliar 100 títulos", "ouro", "rated", 100],
+  ["explora", "🎭", "Curioso", "3 gêneros diferentes", "bronze", "genres", 3],
+  ["explora", "🧭", "Explorador", "6 gêneros diferentes", "prata", "genres", 6],
+  ["explora", "🌈", "Eclético", "10 gêneros diferentes", "ouro", "genres", 10],
+  ["explora", "⏳", "Viajante do tempo", "Títulos de 5 décadas", "prata", "decades", 5],
+  ["explora", "🚀", "Máquina do tempo", "Títulos de 8 décadas", "ouro", "decades", 8],
+  ["explora", "📼", "Clássicos", "5 títulos de 1970 ou antes", "prata", "classics", 5],
+  ["explora", "🎥", "Olhar autoral", "10 diretores diferentes", "prata", "directors", 10],
+  ["explora", "🗺️", "Colecionador de autores", "30 diretores diferentes", "ouro", "directors", 30],
+  ["paixao", "💗", "Primeiro amor", "Curtir 1 título", "bronze", "liked", 1],
+  ["paixao", "💖", "Coração mole", "Curtir 10 títulos", "prata", "liked", 10],
+  ["paixao", "💝", "Apaixonado", "Curtir 25 títulos", "ouro", "liked", 25],
+  ["paixao", "🙌", "Fã de carteirinha", "3 títulos com o mesmo ator", "bronze", "topActor", 3],
+  ["paixao", "🤩", "Fã de verdade", "5 títulos com o mesmo ator", "prata", "topActor", 5],
+  ["paixao", "🎬", "Autor favorito", "3 títulos do mesmo diretor", "prata", "topDirector", 3],
+  ["paixao", "🏅", "Devoto", "10 títulos com o mesmo ator", "ouro", "topActor", 10],
+  ["const", "🔥", "Pegando o ritmo", "3 dias seguidos vendo algo", "bronze", "streak", 3],
+  ["const", "📅", "Semana de cinema", "7 dias seguidos", "prata", "streak", 7],
+  ["const", "🗓️", "Mês de cinema", "30 dias seguidos", "diamante", "streak", 30],
+  ["const", "🎯", "Meta definida", "Definir uma meta anual", "bronze", "goalSet", 1],
+  ["const", "🥇", "Meta batida", "Bater sua meta anual", "ouro", "goalMet", 1],
+  ["org", "🏷️", "Etiquetador", "Criar 1 tag", "bronze", "tags", 1],
+  ["org", "🔖", "Organizado", "Usar 5 tags diferentes", "prata", "tags", 5],
+  ["org", "📚", "Curador", "Criar 1 lista", "bronze", "lists", 1],
+  ["org", "🗃️", "Colecionador", "Criar 5 listas", "prata", "lists", 5],
+  ["org", "🏛️", "Bibliotecário", "Criar 10 listas", "ouro", "lists", 10],
+  ["org", "🖼️", "Top 4", "Escolher seus 4 favoritos", "prata", "favs", 4],
+  ["org", "🪪", "Perfil completo", "Nome, foto, nascimento e bio", "prata", "profile", 4],
+];
+// nível: cada nível pede mais pontos (12, 48, 108, 192...)
+const levelOf = (pts) => { const n = 1 + Math.floor(Math.sqrt(pts / 12)); return { n, base: 12 * (n - 1) ** 2, next: 12 * n ** 2 }; };
+// recompensas cosméticas: [id, nome, nível necessário]
+const REWARDS = {
+  frame: { name: "Moldura do avatar", items: [["default", "Padrão", 1], ["silver", "Prata", 3], ["gold", "Ouro", 5], ["ruby", "Rubi", 8], ["rainbow", "Arco-íris", 12]] },
+  tags: { name: "Estilo das tags", items: [["default", "Padrão", 1], ["silver", "Prateadas", 3], ["gold", "Douradas", 5], ["neon", "Neon", 7], ["holo", "Holográficas", 10]] },
+  title: { name: "Título do perfil", items: [["Novato", "Novato", 1], ["Espectador", "Espectador", 2], ["Cinéfilo", "Cinéfilo", 4], ["Crítico de Sofá", "Crítico de Sofá", 6], ["Mestre das Telas", "Mestre das Telas", 9], ["Lenda do Cinema", "Lenda do Cinema", 13]] },
+};
+const equipped = (P, g, level) => {
+  const items = REWARDS[g].items, c = (P.cosmetics || {})[g];
+  if (c && items.some(([id, , lv]) => id === c && lv <= level)) return c;
+  return g === "title" ? items.filter((i) => i[2] <= level).pop()[0] : "default";
+};
+let achCat = "maratona";
+function achStats(s) {
+  const out = ACH.map(([cat, ico, name, desc, tier, key, goal]) => {
+    const cur = s.v[key] || 0;
+    return { cat, ico, name, desc, tier, cur, goal, got: cur >= goal, pct: Math.min(100, (cur / goal) * 100) };
+  });
+  return { list: out, pts: out.filter((a) => a.got).reduce((t, a) => t + TIERS[a.tier].pts, 0) };
+}
+function achHtml(list, cat) {
+  const fmt = (n) => (Number.isInteger(n) ? n : Math.floor(n * 10) / 10);
+  return list.filter((a) => a.cat === cat).map((a) => `<div class="bdg ${a.got ? "got" : ""}" data-tier="${a.tier}"><span>${a.ico}</span><b>${esc(a.name)}</b><small>${esc(a.desc)}</small>
+    ${a.got ? `<em class="tierchip">${TIERS[a.tier].label} · +${TIERS[a.tier].pts}</em>` : `<div class="mini"><i style="width:${a.pct}%"></i></div><small class="pg">${fmt(Math.min(a.cur, a.goal))}/${a.goal}</small>`}</div>`).join("");
+}
+function rewardsHtml(P, level) {
+  return Object.entries(REWARDS).map(([g, grp]) => {
+    const eq = equipped(P, g, level);
+    return `<div class="rgroup"><h4>${grp.name}</h4><div class="ritems">${grp.items.map(([id, label, lv]) => {
+      const open = level >= lv, on = eq === id;
+      const demo = g === "frame" ? `<span class="fdemo" data-style="${id}"></span>` : g === "tags" ? `<span class="tag-chip" data-style="${id}">tag</span>` : `<span class="tdemo">${esc(label)}</span>`;
+      return `<button class="ritem ${open ? "" : "locked"} ${on ? "on" : ""}" data-g="${g}" data-id="${esc(id)}" ${open ? "" : "disabled"}>${demo}${g === "title" ? "" : `<b>${label}</b>`}<small>${open ? (on ? "✓ Equipado" : "Equipar") : "🔒 Nível " + lv}</small></button>`;
+    }).join("")}</div></div>`;
+  }).join("");
+}
+
+function computeStats(ctx = {}) {
   const W = Object.values(lib).filter((e) => e.watched);
   const count = (arr) => { const m = new Map(); arr.forEach((x) => m.set(x, (m.get(x) || 0) + 1)); return [...m].sort((a, b) => b[1] - a[1]); };
   const people = (f) => { const m = new Map(); W.forEach((e) => (e[f] || []).forEach((p) => { const o = m.get(p.id) || { ...p, n: 0 }; o.n++; m.set(p.id, o); })); return [...m.values()].sort((a, b) => b.n - a.n); };
   const rated = Object.values(lib).filter((e) => e.rating > 0);
   const yr = String(new Date().getFullYear());
+  const P = ctx.P || {};
+  const actors = people("cast"), directors = people("directors");
+  const genres = count(W.flatMap((e) => e.genres || []));
+  const decades = count(W.map((e) => decadeOf(e.year)).filter(Boolean)).sort((a, b) => b[0] - a[0]);
+  const days = [...new Set(W.map((e) => e.watched_on).filter((d) => /^\d{4}-\d\d-\d\d$/.test(d || "")))].sort().map((d) => Date.parse(d + "T00:00:00Z") / 864e5);
+  let streak = 0, run = 0;
+  days.forEach((d, i) => { run = i && d - days[i - 1] === 1 ? run + 1 : 1; streak = Math.max(streak, run); });
+  const goal = +P.goal || 0, thisYear = W.filter((e) => (e.watched_on || "").startsWith(yr)).length;
+  const min = W.reduce((a, e) => a + (e.runtime || 0), 0);
+  const liked = Object.values(lib).filter((e) => e.liked).length, reviews = Object.values(lib).filter((e) => e.review).length;
+  const shows = W.filter((e) => e.type === "tv").length;
   return {
-    total: W.length, movies: W.filter((e) => e.type === "movie").length, shows: W.filter((e) => e.type === "tv").length,
-    min: W.reduce((a, e) => a + (e.runtime || 0), 0), missing: W.filter((e) => e.runtime == null && !enrichTried.has(e.key)),
-    reviews: Object.values(lib).filter((e) => e.review).length, liked: Object.values(lib).filter((e) => e.liked).length,
+    total: W.length, movies: W.filter((e) => e.type === "movie").length, shows,
+    min, missing: W.filter((e) => e.runtime == null && !enrichTried.has(e.key)),
+    reviews, liked,
     avg: rated.length ? rated.reduce((a, e) => a + e.rating, 0) / rated.length : 0,
-    genres: count(W.flatMap((e) => e.genres || [])), decades: count(W.map((e) => decadeOf(e.year)).filter(Boolean)).sort((a, b) => b[0] - a[0]),
+    genres, decades,
     dist: Array.from({ length: 10 }, (_, i) => rated.filter((e) => e.rating === (i + 1) / 2).length),
-    actors: people("cast"), directors: people("directors"),
-    thisYear: W.filter((e) => (e.watched_on || "").startsWith(yr)).length, year: yr,
+    actors, directors, thisYear, year: yr,
     tags: count(Object.values(lib).flatMap((e) => e.tags || [])), tagCount: allTags().length,
+    v: { // valores usados pelas conquistas
+      total: W.length, hours: min / 60, shows, reviews, rated: rated.length, five: rated.filter((e) => e.rating === 5).length,
+      genres: genres.length, decades: decades.length, directors: directors.length, liked,
+      classics: W.filter((e) => +e.year && +e.year <= 1970).length,
+      topActor: actors[0]?.n || 0, topDirector: directors[0]?.n || 0, streak,
+      goalSet: goal > 0 ? 1 : 0, goalMet: goal > 0 && thisYear >= goal ? 1 : 0,
+      tags: allTags().length, lists: ctx.lists || 0, favs: (P.favorites || []).filter((k) => lib[k]).length,
+      profile: [P.name, P.photo, P.birthdate, P.bio].filter(Boolean).length,
+    },
   };
 }
 const bars = (rows, fmt = (x) => x) => {
@@ -476,8 +583,10 @@ async function enrichMissing() {
 }
 async function pagePerfil(quiet) {
   if (!quiet) loading();
-  const P = await api("/api/profile");
-  const s = computeStats();
+  const [P, L] = await Promise.all([api("/api/profile"), api("/api/lists")]);
+  const s = computeStats({ P, lists: L.mine.length });
+  const A = achStats(s), lv = levelOf(A.pts), lvPct = Math.round(((A.pts - lv.base) / (lv.next - lv.base)) * 100);
+  const myTitle = equipped(P, "title", lv.n);
   const age = (() => { if (!P.birthdate) return ""; const b = new Date(P.birthdate), n = new Date(); let a = n.getFullYear() - b.getFullYear(); if (n < new Date(n.getFullYear(), b.getMonth(), b.getDate())) a--; return a >= 0 && a < 130 ? a : ""; })();
   const goal = +P.goal || 0, pct = goal ? Math.min(100, Math.round((s.thisYear / goal) * 100)) : 0;
   const favs = (P.favorites || []).map((k) => lib[k]).filter(Boolean);
@@ -489,6 +598,8 @@ async function pagePerfil(quiet) {
       <label class="avatar" title="Trocar foto" style="${P.photo ? `background-image:url('${P.photo}')` : ""}">${P.photo ? "" : "😎"}<span>Trocar foto</span><input type="file" id="ph" accept="image/*" class="hidden"></label>
       <div class="pinfo">
         <input type="text" id="pn" value="${esc(P.name || "")}" placeholder="Seu nome" class="pname">
+        <div class="ptitle"><span class="lvlchip">Nv ${lv.n}</span><b>${esc(myTitle)}</b><small>${A.pts} pts · faltam ${lv.next - A.pts} para o nível ${lv.n + 1}</small></div>
+        <div class="progress thin"><i style="width:${lvPct}%"></i></div>
         <div class="rowx" style="margin:8px 0"><label class="sub" style="margin:0">Nascimento</label><input type="date" id="pb" value="${esc(P.birthdate || "")}" style="width:auto">${age !== "" ? `<span class="stat" style="margin:0">${age} anos</span>` : ""}</div>
         <textarea id="pbio" placeholder="Fale um pouco sobre seu gosto para cinema…" style="min-height:70px">${esc(P.bio || "")}</textarea>
         <div class="rowx" style="margin-top:10px"><button class="btn primary sm" id="psave">Salvar perfil</button></div>
@@ -520,8 +631,13 @@ async function pagePerfil(quiet) {
 
     <div class="b c4"><h3>🏷️ Minhas tags</h3><div class="tags">${s.tags.map(([t, n]) => `<a class="tag-chip big" href="#/assistidos" data-tag="${esc(t)}">${esc(t)} <small>${n}</small></a>`).join("") || '<p class="sub" style="margin:0">Crie tags na página de qualquer título (ex.: “chorei”, “rever”).</p>'}</div></div>
 
-    <div class="b c4"><h3>🏆 Conquistas · ${BADGES.filter((b) => b[3](s)).length}/${BADGES.length}</h3>
-      <div class="badges">${BADGES.map(([ico, n, d, t]) => `<div class="bdg ${t(s) ? "got" : ""}"><span>${ico}</span><b>${n}</b><small>${d}</small></div>`).join("")}</div></div>
+    <div class="b c4"><h3>🏆 Conquistas · ${A.list.filter((a) => a.got).length}/${A.list.length}</h3>
+      <div class="seg" id="achtabs">${CATS.map((c) => { const l = A.list.filter((a) => a.cat === c.id); return `<button data-c="${c.id}" class="${c.id === achCat ? "on" : ""}">${c.ico} ${c.name} <small>${l.filter((a) => a.got).length}/${l.length}</small></button>`; }).join("")}</div>
+      <div class="badges" id="achgrid">${achHtml(A.list, achCat)}</div></div>
+
+    <div class="b c4"><h3>🎁 Recompensas</h3>
+      <p class="sub" style="text-align:center;margin-bottom:14px">Ganhe pontos com as conquistas, suba de nível e libere visuais para o seu perfil.</p>
+      <div id="rewards">${rewardsHtml(P, lv.n)}</div></div>
   </div>`;
 
   const patch = async (p) => { await api("/api/profile", p); refreshProfile(); };
@@ -534,6 +650,21 @@ async function pagePerfil(quiet) {
     const cur = [...(P.favorites || [])];
     if (r) { cur.splice(+r.dataset.fr, 1); await patch({ favorites: cur }); pagePerfil(true); }
     if (a) openPicker(cur, async (k) => { cur[+a.dataset.fa] = k; await patch({ favorites: cur.filter(Boolean).slice(0, 4) }); pagePerfil(true); });
+  };
+  $("#achtabs").onclick = (e) => {
+    const b = e.target.closest("[data-c]"); if (!b) return;
+    achCat = b.dataset.c;
+    $("#achtabs").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+    $("#achgrid").innerHTML = achHtml(A.list, achCat);
+  };
+  $("#rewards").onclick = async (e) => {
+    const b = e.target.closest(".ritem"); if (!b || b.disabled) return;
+    const c = { ...(P.cosmetics || {}), [b.dataset.g]: b.dataset.id };
+    P.cosmetics = c;
+    await patch({ cosmetics: c });
+    $("#rewards").innerHTML = rewardsHtml(P, lv.n);
+    if (b.dataset.g === "title") $(".ptitle b").textContent = equipped(P, "title", lv.n);
+    toast("Visual equipado ✓");
   };
   if (s.missing.length) enrichMissing();
 }
@@ -565,10 +696,12 @@ async function pageSettings() {
       <div class="opt"><div><b>Tema claro</b><small>Fundo cinza claro em vez de grafite.</small></div>
         <label class="switch"><input type="checkbox" id="opt-light" ${s.theme === "light" ? "checked" : ""}><span></span></label></div>
     </div>
-    <div class="b c2"><h3>💾 Backup</h3><p class="sub" style="text-align:center">Seus dados (biblioteca, listas e perfil) ficam só neste computador. Exporte de vez em quando para guardar uma cópia.</p>
-      <div class="rowx" style="justify-content:center"><a class="btn primary" href="/api/export" download="meucinema-backup.json">Exportar backup</a>
+    <div class="b c2"><h3>💾 Backup</h3><p class="sub" style="text-align:center">Seus dados (biblioteca, listas e perfil) ficam só neste computador. Crie um arquivo de backup de vez em quando para guardar uma cópia.</p>
+      <div class="rowx" style="justify-content:center"><button class="btn primary" id="exp">Exportar backup</button>
       <button class="btn" id="imp">Importar backup</button><input type="file" id="file" accept=".json" class="hidden"></div>
-      <p class="sub" style="font-size:13px;margin:12px 0 0;text-align:center">Pasta dos dados: ${esc(s.folder)}</p></div>
+      <p class="sub" id="lastbk" style="font-size:13px;margin:12px 0 0;text-align:center">${s.last_backup ? `Último backup: ${esc(s.last_backup.at)}<br>${esc(s.last_backup.path)}` : "Você ainda não fez nenhum backup."}</p>
+      <div class="paths"><div><small>Pasta dos dados (de cada usuário do Windows)</small><code>${esc(s.folder)}</code></div>
+        ${s.app_folder ? `<div><small>Pasta do app</small><code>${esc(s.app_folder)}</code></div>` : ""}</div></div>
     <div class="b c4"><h3>🔑 Chave do TMDB</h3><p class="sub" style="text-align:center">${s.configured ? "Chave configurada ✓. Cole outra abaixo se quiser trocar." : "Cole sua chave do TMDB (themoviedb.org → Configurações → API)."}
       Aceita o “Token de Leitura da API” ou a “Chave da API”.</p>
       <div class="rowx"><input type="password" id="tok" placeholder="Cole a chave aqui" style="flex:1;min-width:240px"><button class="btn primary" id="sv">Salvar</button></div></div>
@@ -583,9 +716,30 @@ async function pageSettings() {
     toast(ev.target.id === "opt-glass" ? (a.transparency ? "Transparência ligada" : "Transparência desligada") : (a.theme === "light" ? "Tema claro ativado" : "Tema escuro ativado"));
   };
   $("#opt-glass").onchange = $("#opt-light").onchange = setAppearance;
-  $("#imp").onclick = () => $("#file").click();
+  const afterImport = async (n) => { await loadLib(); refreshProfile(); toast(`${n} títulos importados ✓`); pageSettings(); };
+  $("#exp").onclick = async () => { // cria o arquivo e abre o Explorador para você escolher onde guardar
+    try {
+      const r = await api("/api/backup/export", {});
+      if (r.cancelled) return;
+      toast("Backup salvo ✓"); pageSettings();
+    } catch (x) {
+      if (x.status !== 501) return toast(x.message, 1);
+      const blob = await (await fetch("/api/export")).blob(); // modo navegador: baixa o arquivo
+      const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: "meucinema-backup.json" });
+      a.click(); URL.revokeObjectURL(a.href); toast("Backup baixado ✓");
+    }
+  };
+  $("#imp").onclick = async () => { // abre o Explorador para você procurar o arquivo de backup
+    try {
+      const r = await api("/api/backup/import", {});
+      if (!r.cancelled) afterImport(r.imported);
+    } catch (x) {
+      if (x.status !== 501) return toast(x.message, 1);
+      $("#file").click(); // modo navegador
+    }
+  };
   $("#file").onchange = async (ev) => {
-    try { const data = JSON.parse(await ev.target.files[0].text()); const r = await api("/api/import", data); await loadLib(); toast(`${r.imported} títulos importados`); pageSettings(); } catch (x) { toast(x.message || "Arquivo inválido", 1); }
+    try { const data = JSON.parse(await ev.target.files[0].text()); afterImport((await api("/api/import", data)).imported); } catch (x) { toast(x.message || "Arquivo inválido", 1); }
   };
   $("#sv").onclick = async () => { const t = $("#tok").value.trim(); if (!t) return; await api("/api/settings", { token: t }); $("#tok").value = ""; toast("Chave salva ✓"); };
 }
